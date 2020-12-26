@@ -2,7 +2,6 @@
   "name": "dfi",
   "homepage": ".",
   "version": "0.1.0",
-  "private": true,
   "dependencies": {
     "@babel/core": "7.9.0",
     "@download/blockies": "^1.0.3",
