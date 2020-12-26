@@ -131,6 +131,9 @@ export default function SectionPools() {
       })
     }
     let amountValue =  depositedBalance[index]? depositedBalance[index].replace(',',''): depositedBalance[index];
+    if(amountValue == undefined){
+      amountValue = '0';
+    }
     if (!pool.tokenAddress) {// 如果是eth
       fetchDepositEth({
         address,
@@ -169,6 +172,9 @@ export default function SectionPools() {
       })
     }
     let amountValue =  withdrawAmount[index]? withdrawAmount[index].replace(',',''): withdrawAmount[index];
+    if(amountValue == undefined){
+      amountValue = '0';
+    }
     if (!pool.tokenAddress) {// 如果是eth
       fetchWithdrawEth({
         address,
@@ -333,7 +339,7 @@ export default function SectionPools() {
                                     <Hidden mdDown>
                                         <Grid item xs={4} container justify='center' alignItems="center">
                                             <Grid item style={{width: "200px"}}>
-                                                <Typography className={classes.iconContainerMainTitle} variant="body2" gutterBottom noWrap>{forMat(singleDepositedBalance)} { pool.token }</Typography>
+                                                <Typography className={classes.iconContainerMainTitle} variant="body2" gutterBottom noWrap>{forMat(singleDepositedBalance)} { pool.earnedToken }</Typography>
                                                 <Typography className={classes.iconContainerSubTitle} variant="body2">{t('Vault-Deposited')}</Typography>
                                             </Grid>
                                         </Grid>
@@ -440,7 +446,7 @@ export default function SectionPools() {
                                             round
                                             onFocus={(event) => event.stopPropagation()}
                                             disabled={
-                                                !Boolean(depositedBalance[index]) || !Boolean(depositedBalance[index]!=0) || fetchDepositPending[index] || (new BigNumber(depositedBalance[index]).toNumber() > balanceSingle.toNumber() || isMoreDepostLimit(new BigNumber(depositedBalance[index]).toNumber(),pool.depostLimit) )
+                                                fetchDepositPending[index] || (new BigNumber(depositedBalance[index]).toNumber() > balanceSingle.toNumber() || isMoreDepostLimit(new BigNumber(depositedBalance[index]).toNumber(),pool.depostLimit) )
                                             }
                                             onClick={onDeposit.bind(this, pool, index, false, balanceSingle)}
                                             >{t('Vault-DepositButton')}
@@ -502,7 +508,7 @@ export default function SectionPools() {
                                 round
                                 type="button"
                                 color="primary"
-                                disabled={fetchWithdrawPending[index] || !Boolean(withdrawAmount[index])  || !Boolean(withdrawAmount[index]!=0)}
+                                disabled={fetchWithdrawPending[index]}
                                 onClick={onWithdraw.bind(this, pool, index, false, singleDepositedBalance)}
                                 >
                                 {fetchWithdrawPending[index] ? `${t('Vault-WithdrawING')}`: `${t('Vault-WithdrawButton')}`}
