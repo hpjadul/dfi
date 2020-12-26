@@ -2,6 +2,7 @@ import React,{ useState, useEffect } from 'react';
 import classNames from "classnames";
 import { useTranslation } from 'react-i18next';
 import BigNumber from 'bignumber.js'
+import moment from 'moment';
 import { byDecimals } from 'features/helpers/bignumber';
 import { withStyles, makeStyles } from "@material-ui/core/styles";
 import GridContainer from "components/Grid/GridContainer.js";
@@ -59,6 +60,8 @@ export default function StakePool(props) {
   const [ myHalfTime, setMyHalfTime] = useState(`0day 00:00:00`);
   const [ inputVal, setInputVal] = useState(0);
   const [ anchorEl, setAnchorEl] = useState(null);
+  const [ canWithdrawTimeIsZero,setCanWithdrawTimeIsZero ] = useState(false);
+  const [ canWithdrawTimeIsMoreNowTime,setCanWithdrawTimeIsMoreNowTime ] = useState(false);
 
   const changeInputVal = (event) => {
     let value = event.target.value;
@@ -99,13 +102,37 @@ export default function StakePool(props) {
   }
 
   useEffect(() => {
+    const func = () => {
+      if(Boolean(canWithdrawTime[index] === 0)){
+        setCanWithdrawTimeIsZero(true);
+        setCanWithdrawTimeIsMoreNowTime(false);
+      }else{
+        setCanWithdrawTimeIsZero(false);
+        if(Boolean((canWithdrawTime[index] * 1000) > new Date().getTime())){
+          setCanWithdrawTimeIsMoreNowTime(true);
+        }else{
+          setCanWithdrawTimeIsMoreNowTime(false);
+        }
+      }
+    }
+    const id = setInterval(func, 1000);
+    return () => clearInterval(id);
+  },[canWithdrawTime[index]])
+
+  const momentFormatTime = (timestamp) =>{
+    return moment(timestamp).format('YYYY-MM-DD HH:mm:ss')
+  }
+
+  useEffect(() => {
     const isPending = Boolean(fetchWithdrawPending[index]);
     const currentlyStakedIs0 = currentlyStaked[index] === 0;
     const isPool4 = Boolean(index === 3);
-    const isDisableCanWithdrawTime = Boolean(canWithdrawTime[index] === 0) || Boolean((canWithdrawTime[index] * 1000) > new Date().getTime());
+    const isPool5 = Boolean(index === 4);
+    const isDisableCanWithdrawTime = canWithdrawTimeIsZero || canWithdrawTimeIsMoreNowTime;
     const isPool4AndDisableCanWithDraw = Boolean(isPool4 && isDisableCanWithdrawTime)
-    setWithdrawAble(!Boolean(isPending || isPool4AndDisableCanWithDraw || currentlyStakedIs0));
-  }, [currentlyStaked[index], fetchWithdrawPending[index], index, new Date()]);
+    const isPool5AndDisableCanWithDraw = Boolean(isPool5 && isDisableCanWithdrawTime)
+    setWithdrawAble(!Boolean(isPending || isPool4AndDisableCanWithDraw || currentlyStakedIs0 || isPool5AndDisableCanWithDraw));
+  }, [currentlyStaked[index], fetchWithdrawPending[index], index, canWithdrawTimeIsZero, canWithdrawTimeIsMoreNowTime]);
 
   const onWithdraw = () => {
     const amount = new BigNumber(inputVal).multipliedBy(new BigNumber(10).exponentiatedBy(pools[index].tokenDecimals)).toString(10);
@@ -128,10 +155,12 @@ export default function StakePool(props) {
     const rewardsAvailableIs0 = rewardsAvailable[index] === 0;
     const currentlyStakedAndRewardsAvailableIs0 = Boolean(currentlyStakedIs0 && rewardsAvailableIs0);
     const isPool4 = Boolean(index === 3);
-    const isDisableCanWithdrawTime = Boolean(canWithdrawTime[index] === 0) || Boolean((canWithdrawTime[index] * 1000) > new Date().getTime());
+    const isPool5 = Boolean(index === 4);
+    const isDisableCanWithdrawTime = canWithdrawTimeIsZero || canWithdrawTimeIsMoreNowTime;
     const isPool4AndDisableCanWithDraw = Boolean(isPool4 && isDisableCanWithdrawTime)
-    setExitAble(!Boolean(isPending || isPool4AndDisableCanWithDraw || currentlyStakedAndRewardsAvailableIs0));
-  }, [currentlyStaked[index], rewardsAvailable[index], fetchExitPending[index], index, new Date()]);
+    const isPool5AndDisableCanWithDraw = Boolean(isPool5 && isDisableCanWithdrawTime)
+    setExitAble(!Boolean(isPending || isPool4AndDisableCanWithDraw || currentlyStakedAndRewardsAvailableIs0 || isPool5AndDisableCanWithDraw));
+  }, [currentlyStaked[index], rewardsAvailable[index], fetchExitPending[index], index, canWithdrawTimeIsZero, canWithdrawTimeIsMoreNowTime]);
 
   const onExit = () => {
     fetchExit(index);
@@ -154,7 +183,7 @@ export default function StakePool(props) {
 
   useEffect(() => {
     if(halfTime[index] === 0) return;
-    if(Boolean(index === 2) || Boolean(index=== 3)) return;
+    if(Boolean(index === 2) || Boolean(index=== 3) || Boolean(index=== 4)) return;
     const formatTime = () => {
       const currTime = new Date().getTime();
       const deadline = halfTime[index] * 1000;
@@ -178,14 +207,14 @@ export default function StakePool(props) {
       fetchCurrentlyStaked(index);
       fetchRewardsAvailable(index);
       if(Boolean(index === 0) || Boolean(index === 1)) fetchHalfTime(index);
-      if(index === 3) fetchCanWithdrawTime(index);
+      if(index === 3 || index === 4) fetchCanWithdrawTime(index);
       const id = setInterval(() => {
         checkApproval(index);
         fetchBalance(index);
         fetchCurrentlyStaked(index);
         fetchRewardsAvailable(index);
         if(Boolean(index === 0) || Boolean(index === 1)) fetchHalfTime(index);
-        if(index === 3) fetchCanWithdrawTime(index);
+        if(index === 3 || index === 4) fetchCanWithdrawTime(index);
       }, 10000);
       return () => clearInterval(id);
     }
@@ -201,7 +230,7 @@ export default function StakePool(props) {
           [classes.contentTitle]:true,
           [classes.contentTitleMarginBottom]:true,
         })}>
-          <GridItem sm={index===3 ? 4: 3} xs={12} className={classNames({
+          <GridItem sm={(index=== 3 || index===4) ? 4: 3} xs={12} className={classNames({
               [classes.contentTitleItem]:true,
               [classes.contentTitleItemBorder]:true,
             })}>
@@ -213,7 +242,7 @@ export default function StakePool(props) {
                 <div className={classes.contentItemTitle}>{t('Stake-Balancer-Your-Balance')}</div>
               </Hidden>
           </GridItem>
-          <GridItem sm={index===3 ? 4: 3} xs={12} className={classNames({
+          <GridItem sm={(index=== 3 || index===4) ? 4: 3} xs={12} className={classNames({
             [classes.contentTitleItem]:true,
             [classes.contentTitleItemBorder]:true,
           })}>
@@ -225,9 +254,9 @@ export default function StakePool(props) {
               <div className={classes.contentItemTitle}>{t('Stake-Balancer-Current-Staked')}</div>
             </Hidden>
           </GridItem>
-          <GridItem sm={index===3 ? 4: 3} xs={12} className={classNames({
+          <GridItem sm={(index=== 3 || index===4) ? 4: 3} xs={12} className={classNames({
             [classes.contentTitleItem]:true,
-            [classes.contentTitleItemBorder]:index!==3,
+            [classes.contentTitleItemBorder]:(index!==3 && index!==4),
           })}>
             <Hidden smUp>
               <Typography variant="body2" gutterBottom className={classes.contentItemTitle}>{t('Stake-Balancer-Rewards-Available')}</Typography>
@@ -237,7 +266,7 @@ export default function StakePool(props) {
               <div className={classes.contentItemTitle}>{t('Stake-Balancer-Rewards-Available')}</div>
             </Hidden>
           </GridItem>
-          {index!==3&&<GridItem sm={3} xs={12} className={classes.contentTitleItem}>
+          {(index!==3 && index!==4)&&<GridItem sm={3} xs={12} className={classes.contentTitleItem}>
           <Hidden smUp>
               <Typography variant="body2" gutterBottom className={classes.contentItemTitle}>{t('Stake-Balancer-Half-Time')}</Typography>
             </Hidden>
@@ -376,15 +405,30 @@ export default function StakePool(props) {
                     }}
                     className={classNames({
                       [classes.stakeButton]:true,
-                      [classes.grayButton]:true,
+                      [classes.grayButton]:!Boolean(withdrawAble),
                       [classes.stakeDetailButton]:true,
                     })}>
                     {t('Stake-Button-Unstake-Tokens')}
                   </CustomButtons>
-                  <div className={classes.stakeHintContainer}>
-                    <img src={require(`../../../images/stake-hint.svg`)} style={{marginRight:'3px'}}/>
-                  <span className={classes.stakeHint}>{t('Stake-Pool-Unstake-Hint')}</span>
-                  </div>
+                  {
+                    (canWithdrawTimeIsZero || canWithdrawTimeIsMoreNowTime) ? (
+                      <div className={classes.stakeHintContainer}>
+                        <img src={require(`../../../images/stake-hint.svg`)} style={{marginRight:'3px'}}/>
+                        {
+                          canWithdrawTimeIsMoreNowTime ? (
+                            <span className={classes.stakeHint}>{t('Stake-Pool-Unstake-Hint-Date')+momentFormatTime(canWithdrawTime[index] * 1000)}</span>
+                          ) : (
+                            <span className={classes.stakeHint}>{t('Stake-Pool-Unstake-Hint')}</span>
+                          )
+                        }
+                      </div>
+                    ):(
+                      <div className={classNames({
+                        [classes.stakeHintContainer]:true,
+                        [classes.stakeHintContainerHidden]:true,
+                      })}></div>
+                    )
+                  }
                 </GridItem>
                 <GridItem md={3} sm={6} xs={12} className={classes.flexCenter} style={{'flexDirection':'column'}}>
                   <CustomButtons
@@ -408,15 +452,31 @@ export default function StakePool(props) {
                     onClick={onExit}
                     className={classNames({
                       [classes.stakeButton]:true,
-                      [classes.grayButton]:true,
+                      [classes.rewardsButton]:true,
+                      [classes.grayButton]:!Boolean(exitAble),
                       [classes.stakeDetailButton]:true,
                     })}>
                     {t('Stake-Button-Exit')}
                   </CustomButtons>
-                  <div className={classes.stakeHintContainer} >
-                    <img src={require(`../../../images/stake-hint.svg`)} style={{marginRight:'3px'}}/>
-                    <span className={classes.stakeHint}>{t('Stake-Pool-Unstake-Hint')}</span>
-                  </div>
+                  {
+                    (canWithdrawTimeIsZero || canWithdrawTimeIsMoreNowTime) ? (
+                      <div className={classes.stakeHintContainer} >
+                        <img src={require(`../../../images/stake-hint.svg`)} style={{marginRight:'3px'}}/>
+                        {
+                          canWithdrawTimeIsMoreNowTime ? (
+                            <span className={classes.stakeHint}>{t('Stake-Pool-Unstake-Hint-Date')+momentFormatTime(canWithdrawTime[index] * 1000)}</span>
+                          ) : (
+                            <span className={classes.stakeHint}>{t('Stake-Pool-Unstake-Hint')}</span>
+                          )
+                        }
+                      </div>
+                    ):(
+                      <div className={classNames({
+                        [classes.stakeHintContainer]:true,
+                        [classes.stakeHintContainerHidden]:true,
+                      })}></div>
+                    )
+                  }
                 </GridItem>
               </GridContainer>
             )

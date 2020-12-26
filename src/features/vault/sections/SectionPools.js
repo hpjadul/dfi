@@ -38,7 +38,7 @@ import CustomSlider from 'components/CustomSlider/CustomSlider';
 
 import sectionPoolsStyle from "../jss/sections/sectionPoolsStyle";
 import { reflect } from 'async';
-import { inputLimitPass,inputFinalVal } from 'features/helpers/utils';
+import { inputLimitPass,inputFinalVal,isEmpty } from 'features/helpers/utils';
 
 const useStyles = makeStyles(sectionPoolsStyle);
 
@@ -93,7 +93,7 @@ export default function SectionPools() {
   const handleDepositedBalance = (index,total,event,sliderNum) => {
     setDepositedBalance({
       ...depositedBalance,
-      [index]: sliderNum == 0 ? 0: calculateReallyNum(total,sliderNum),
+      [index]: sliderNum == 0 ? '0': calculateReallyNum(total,sliderNum),
       [`slider-${index}`]: sliderNum == 0 ? 0: sliderNum,
     });
   }
@@ -101,7 +101,7 @@ export default function SectionPools() {
   const handleWithdrawAmount = (index,total,event,sliderNum) => {
     setWithdrawAmount({
       ...withdrawAmount,
-      [index]: sliderNum == 0 ? 0: calculateReallyNum(total,sliderNum),
+      [index]: sliderNum == 0 ? '0': calculateReallyNum(total,sliderNum),
       [`slider-${index}`]: sliderNum == 0 ? 0: sliderNum,
     });
   };
@@ -126,11 +126,10 @@ export default function SectionPools() {
     if (isAll) {
       setDepositedBalance({
         ...depositedBalance,
-        [index]: forMat(balanceSingle),
+        [index]: String(forMat(balanceSingle)),
         [`slider-${index}`]: 100,
       })
     }
-    console.log(depositedBalance[index])
     let amountValue =  depositedBalance[index]? depositedBalance[index].replace(',',''): depositedBalance[index];
     if (!pool.tokenAddress) {// 如果是eth
       fetchDepositEth({
@@ -162,11 +161,10 @@ export default function SectionPools() {
 
   const onWithdraw = (pool, index, isAll, singleDepositedBalance, event) => {
     event.stopPropagation();
-    // console.log(isAll)
     if (isAll) {
       setWithdrawAmount({
         ...withdrawAmount,
-        [index]: forMat(singleDepositedBalance),
+        [index]: String(forMat(singleDepositedBalance)),
         [`slider-${index}`]: 100,
       })
     }
@@ -176,7 +174,7 @@ export default function SectionPools() {
         address,
         web3,
         isAll,
-        amount: new BigNumber(amountValue).multipliedBy(new BigNumber(10).exponentiatedBy(pool.tokenDecimals)).toString(10),
+        amount: new BigNumber(amountValue).multipliedBy(new BigNumber(10).exponentiatedBy(pool.itokenDecimals)).toString(10),
         contractAddress: pool.earnContractAddress,
         index
       }).then(
@@ -189,7 +187,7 @@ export default function SectionPools() {
         address,
         web3,
         isAll,
-        amount: new BigNumber(amountValue).multipliedBy(new BigNumber(10).exponentiatedBy(pool.tokenDecimals)).toString(10),
+        amount: new BigNumber(amountValue).multipliedBy(new BigNumber(10).exponentiatedBy(pool.itokenDecimals)).toString(10),
         contractAddress: pool.earnContractAddress,
         index
       }).then(
@@ -224,6 +222,13 @@ export default function SectionPools() {
       return () => clearInterval(id);
     }
   }, [address, web3, fetchBalances, fetchPoolBalances]);
+
+  const isMoreDepostLimit = (value,depostLimit) => {
+    if(isEmpty(value) ||  depostLimit==0 || value < depostLimit){
+      return false
+    }
+    return true;
+  }
 
   useEffect(() => {
     fetchContractApy();
@@ -263,7 +268,7 @@ export default function SectionPools() {
             let balanceSingle = byDecimals(tokens[pool.token].tokenBalance, pool.tokenDecimals);
             // balanceSingle = byDecimals(random(1, 1000000), 1)
             // balanceSingle = new BigNumber(random(1, 1000000000000000))
-            let singleDepositedBalance = byDecimals(tokens[pool.earnedToken].tokenBalance, pool.tokenDecimals);
+            let singleDepositedBalance = byDecimals(tokens[pool.earnedToken].tokenBalance, pool.itokenDecimals);
             // singleDepositedBalance = byDecimals(random(1, 1000000), 1)
             // singleDepositedBalance = new BigNumber(random(1, 1000))
             let depositedApy = contractApy[pool.id] || 0;
@@ -435,7 +440,7 @@ export default function SectionPools() {
                                             round
                                             onFocus={(event) => event.stopPropagation()}
                                             disabled={
-                                                !Boolean(depositedBalance[index]) || fetchDepositPending[index] || (new BigNumber(depositedBalance[index]).toNumber() > balanceSingle.toNumber())
+                                                !Boolean(depositedBalance[index]) || !Boolean(depositedBalance[index]!=0) || fetchDepositPending[index] || (new BigNumber(depositedBalance[index]).toNumber() > balanceSingle.toNumber() || isMoreDepostLimit(new BigNumber(depositedBalance[index]).toNumber(),pool.depostLimit) )
                                             }
                                             onClick={onDeposit.bind(this, pool, index, false, balanceSingle)}
                                             >{t('Vault-DepositButton')}
@@ -453,7 +458,7 @@ export default function SectionPools() {
                                             round
                                             onFocus={(event) => event.stopPropagation()}
                                             disabled={
-                                                fetchDepositPending[index] || (new BigNumber(depositedBalance[index]).toNumber() > balanceSingle.toNumber())
+                                                fetchDepositPending[index] || (new BigNumber(depositedBalance[index]).toNumber() > balanceSingle.toNumber() || isMoreDepostLimit(balanceSingle.toNumber(),pool.depostLimit) )
                                             }
                                             onClick={onDeposit.bind(this, pool, index, true, balanceSingle)}
                                             >{t('Vault-DepositButtonAll')}
@@ -471,7 +476,7 @@ export default function SectionPools() {
                         <FormControl fullWidth variant="outlined">
                             <CustomOutlinedInput 
                                 value={withdrawAmount[index]!=undefined ? withdrawAmount[index] : '0'}
-                                onChange={changeDetailInputValue.bind(this,'withdrawAmount',index,singleDepositedBalance.toNumber(),pool.tokenDecimals)}
+                                onChange={changeDetailInputValue.bind(this,'withdrawAmount',index,singleDepositedBalance.toNumber(),pool.itokenDecimals)}
                                 />
                         </FormControl>
                         <CustomSlider 
@@ -497,7 +502,7 @@ export default function SectionPools() {
                                 round
                                 type="button"
                                 color="primary"
-                                disabled={fetchWithdrawPending[index] || !Boolean(withdrawAmount[index])}
+                                disabled={fetchWithdrawPending[index] || !Boolean(withdrawAmount[index])  || !Boolean(withdrawAmount[index]!=0)}
                                 onClick={onWithdraw.bind(this, pool, index, false, singleDepositedBalance)}
                                 >
                                 {fetchWithdrawPending[index] ? `${t('Vault-WithdrawING')}`: `${t('Vault-WithdrawButton')}`}
