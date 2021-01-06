@@ -38,7 +38,7 @@
     "animate.css": "^4.1.0",
     "async": "^3.2.0",
     "authereum": "^0.0.4-beta.191",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "babel-eslint": "10.1.0",
     "babel-jest": "^24.9.0",
     "babel-loader": "8.1.0",
